@@ -1,0 +1,52 @@
+
+name: Build GT3 Revisited for iOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ios.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install CMake
+        run: |
+          brew install cmake
+
+      - name: Configure iOS project
+        run: |
+          cmake -S . -B build-ios -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
+            -DGT3R_IOS_BUNDLE_ID=com.personal.gt3revisited \
+            -DGT3R_IOS_TEAM=
+
+      - name: Build iOS app
+        run: |
+          xcodebuild \
+            -project build-ios/GT3Revisited.xcodeproj \
+            -scheme gt3r \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build-output \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir Payload
+          cp -R build-output/Build/Products/Release-iphoneos/gt3r.app Payload/
+          zip -r GT3Revisited.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: GT3Revisited-IPA
+          path: GT3Revisited.ipa
+          retention-days: 7
